@@ -16,7 +16,16 @@ export interface CapacitorGoogleMapsPlugin {
     longitude?: number;
     zoom?: number;
     liteMode?: boolean;
+    centerPin?: boolean;
+    centerPinOptions?: {
+      assetFile?: string,
+      width?: number,
+      height?: number
+    };
   }): Promise<any>;
+
+  /** Creates a centered marker, which stays fixed while dragging the map */
+  createCenterPin(_options: { assetFile?: string, width?: number, height?: number; }): Promise<any>;
 
   /** [iOS only] Initializes GoogleMaps with API key */
   initialize(options: { key: string }): Promise<any>;
@@ -46,6 +55,8 @@ export interface CapacitorGoogleMapsPlugin {
     animationDuration?: number;
     coordinates?: LatLng[];
   }): Promise<any>;
+
+  getCameraPosition(): Promise<{ lat: number, lng: number }>;
 
   /** Sets the map type  */
   setMapType(options: { type: string }): Promise<any>;

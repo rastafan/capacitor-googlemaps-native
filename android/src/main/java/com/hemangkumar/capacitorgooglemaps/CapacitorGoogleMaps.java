@@ -3,15 +3,18 @@ package com.hemangkumar.capacitorgooglemaps;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
@@ -19,7 +22,6 @@ import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
-import com.getcapacitor.NativePlugin;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -40,13 +42,20 @@ import com.google.android.libraries.maps.model.MarkerOptions;
 import com.google.android.libraries.maps.model.PointOfInterest;
 import com.google.android.libraries.maps.model.PolygonOptions;
 import com.google.android.libraries.maps.model.PolylineOptions;
+import com.hemangkumar.capacitorgooglemaps.capacitorgooglemaps.R;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 @CapacitorPlugin(
@@ -61,13 +70,21 @@ import java.util.List;
 )
 public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, GoogleMap.OnMyLocationButtonClickListener {
 
-    private MapView mapView;
+  private static final String TAG = "CapacitorGoogleMaps";
+  private MapView mapView;
     GoogleMap googleMap;
     Integer mapViewParentId;
     Integer DEFAULT_WIDTH = 500;
     Integer DEFAULT_HEIGHT = 500;
     Float DEFAULT_ZOOM = 12.0f;
     private HashMap<String, Marker> mHashMap = new HashMap<>();
+
+    Integer viewWidth = DEFAULT_WIDTH;
+    Integer viewHeight = DEFAULT_HEIGHT;
+    Integer viewX = 0;
+    Integer viewY = 0;
+    ImageView centerPin;
+
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -125,10 +142,13 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
 
     @PluginMethod()
     public void create(PluginCall call) {
-        final Integer width = call.getInt("width", DEFAULT_WIDTH);
-        final Integer height = call.getInt("height", DEFAULT_HEIGHT);
-        final Integer x = call.getInt("x", 0);
-        final Integer y = call.getInt("y", 0);
+        final Integer width = viewWidth = call.getInt("width", DEFAULT_WIDTH);
+        final Integer height = viewHeight = call.getInt("height", DEFAULT_HEIGHT);
+        final Integer x = viewX = call.getInt("x", 0);
+        final Integer y = viewY = call.getInt("y", 0);
+
+        final Boolean centerPin = call.getBoolean("centerPin", false);
+        final JSObject centerPinOptions = call.getObject("centerPinOptions", new JSObject());
 
         final Float zoom = call.getFloat("zoom", DEFAULT_ZOOM);
         final Double latitude = call.getDouble("latitude");
@@ -173,12 +193,51 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
 
                 ((ViewGroup) getBridge().getWebView().getParent()).addView(mapViewParent);
 
+                /*
+                ImageView pin = new ImageView(getBridge().getContext());
+                pin.setId(View.generateViewId());
+                ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                layoutParams.width = new Float(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 50, getContext().getResources().getDisplayMetrics())).intValue();
+                layoutParams.height = new Float(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 50, getContext().getResources().getDisplayMetrics())).intValue();
+                pin.setLayoutParams(layoutParams);
+
+                pin.setContentDescription("Map Pin");
+                pin.setElevation(2);
+                pin.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.pin));
+                pin.setTranslationY(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, (height/2)-50+y, getContext().getResources().getDisplayMetrics()));
+                pin.setTranslationX(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, (width/2)-25+x, getContext().getResources().getDisplayMetrics()));
+
+                ((ViewGroup) getBridge().getWebView().getParent()).addView(pin);
+                */
+                if(centerPin){
+                  createFixedMarker(
+                    centerPinOptions.getString("assetFile", null),
+                    centerPinOptions.getInteger("height",null),
+                    centerPinOptions.getInteger("width",null)
+                  );
+                }
+
                 mapView.onCreate(null);
                 mapView.onStart();
                 mapView.getMapAsync(ctx);
             }
         });
         call.resolve();
+    }
+
+    @PluginMethod()
+    public void createCenterPin(final PluginCall call){
+      getBridge().getActivity().runOnUiThread(new Runnable() {
+        @Override
+        public void run() {
+            createFixedMarker(
+              call.getString("assetFile", null),
+              call.getInt("height",null),
+              call.getInt("width",null)
+            );
+            call.resolve();
+          }
+      });
     }
 
     @PluginMethod()
@@ -445,6 +504,15 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
                 }
             }
         });
+        getBridge().getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (centerPin != null) {
+                    centerPin.setVisibility(ImageView.INVISIBLE);
+                }
+            }
+        });
+
     }
 
     @PluginMethod()
@@ -457,6 +525,15 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
                     if (viewToShow != null){
                         viewToShow.setVisibility(View.VISIBLE);
                     }
+                }
+            }
+        });
+
+        getBridge().getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (centerPin != null) {
+                    centerPin.setVisibility(ImageView.VISIBLE);
                 }
             }
         });
@@ -573,8 +650,6 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
     @PluginMethod()
     public void setCamera(PluginCall call) {
 
-
-
         getBridge().executeOnMainThread(new Runnable() {
             @Override
             public void run() {
@@ -607,6 +682,20 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
         });
 
         call.resolve();
+    }
+
+    @PluginMethod()
+    public void getCameraPosition(PluginCall call) {
+        getBridge().executeOnMainThread(new Runnable() {
+            @Override
+            public void run() {
+                JSObject result = new JSObject();
+                LatLng position = googleMap.getCameraPosition().target;
+                result.put("lat", position.latitude);
+                result.put("lng", position.longitude);
+                call.resolve(result);
+            }
+        });
     }
 
     @PluginMethod()
@@ -818,6 +907,80 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
         final float scale = getBridge().getActivity().getResources().getDisplayMetrics().density;
         // Convert the dps to pixels, based on density scale
         return (int) (pixels * scale + 0.5f);
+    }
+
+    public void createFixedMarker(String imagePath, Integer markerHeight, Integer markerWidth)  {
+
+      if(markerHeight == null){
+        markerHeight = 78;
+      }
+
+      if(markerWidth == null){
+        markerWidth = 56;
+      }
+
+
+      if(centerPin == null){
+        centerPin = new ImageView(getBridge().getContext());
+        centerPin.setId(View.generateViewId());
+        ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        centerPin.setLayoutParams(layoutParams);
+        centerPin.setContentDescription(getContext().getString(R.string.center_marker_description));
+        centerPin.setElevation(2);
+
+        ((ViewGroup) getBridge().getWebView().getParent()).addView(centerPin);
+      }
+
+
+      centerPin.getLayoutParams().width = new Float(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, markerHeight, getContext().getResources().getDisplayMetrics())).intValue();
+      centerPin.getLayoutParams().height = new Float(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, markerWidth, getContext().getResources().getDisplayMetrics())).intValue();
+
+      ExecutorService myExecutor = Executors.newCachedThreadPool();
+      myExecutor.execute(new Runnable() {
+        @Override
+        public void run() {
+
+          Bitmap customBitmap = null;
+          final String finalImagePath;
+          if(imagePath != null) {
+
+            if(imagePath.indexOf("public/") <0){
+              finalImagePath = "public/" + imagePath;
+            }else{
+              finalImagePath = imagePath;
+            }
+
+            InputStream imageStream = null;
+            try {
+              imageStream = getContext().getAssets().open(finalImagePath);
+            } catch (IOException e) {
+              Log.e(TAG, "createFixedMarker - run: ", e);
+            }
+
+            if(imageStream != null){
+              customBitmap = BitmapFactory.decodeStream(imageStream);
+            }
+
+          }
+
+          final Bitmap finalBitmap = customBitmap;
+          getBridge().getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+              if (finalBitmap != null) {
+                centerPin.setImageBitmap(finalBitmap);
+              } else {
+                // Default
+                centerPin.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.google_pin));
+              }
+            }
+          });
+        }
+      });
+
+      centerPin.setTranslationY(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, (viewHeight/2)-markerHeight+viewY, getContext().getResources().getDisplayMetrics()));
+      centerPin.setTranslationX(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, (viewWidth/2)-(markerWidth/2)+viewX, getContext().getResources().getDisplayMetrics()));
+
     }
 
 }

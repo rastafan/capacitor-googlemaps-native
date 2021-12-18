@@ -14,7 +14,10 @@ export class CapacitorGoogleMapsWeb extends WebPlugin implements CapacitorGoogle
     });
   }
 
-  create(_options: { width: number; height: number; x: number; y: number; latitude?: number; longitude?: number; zoom?: number; liteMode?: boolean }): Promise<any> {
+  create(_options: { width: number; height: number; x: number; y: number; latitude?: number; longitude?: number; zoom?: number; liteMode?: boolean; centerPin?: boolean; centerPinOptions?: { assetFile?: string, width?: number, height?: number; } }): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+  createCenterPin(_options: { assetFile?: string, width?: number, height?: number; }): Promise<any> {
     throw new Error('Method not implemented.');
   }
   initialize(_options: { key: string }): Promise<any> {
@@ -27,6 +30,9 @@ export class CapacitorGoogleMapsWeb extends WebPlugin implements CapacitorGoogle
     throw new Error('Method not implemented.');
   }
   setCamera(_options: { viewingAngle?: number; bearing?: number; zoom?: number; latitude?: number; longitude?: number; animate?: boolean; animationDuration?: number; coordinates?: LatLng[] }): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+  getCameraPosition(): Promise<{ lat: number, lng: number }> {
     throw new Error('Method not implemented.');
   }
   setMapType(_options: { type: string }): Promise<any> {
