@@ -6,11 +6,13 @@
 CAP_PLUGIN(CapacitorGoogleMaps, "CapacitorGoogleMaps",
            CAP_PLUGIN_METHOD(initialize, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(create, CAPPluginReturnPromise);
+           CAP_PLUGIN_METHOD(createCenterPin, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(addMarker, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(removeMarker, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(setMapType, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(setMapStyle, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(setCamera, CAPPluginReturnPromise);
+           CAP_PLUGIN_METHOD(getCameraPosition, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(isIndoorEnabled, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(accessibilityElementsHidden, CAPPluginReturnPromise);
            CAP_PLUGIN_METHOD(isMyLocationEnabled, CAPPluginReturnPromise);

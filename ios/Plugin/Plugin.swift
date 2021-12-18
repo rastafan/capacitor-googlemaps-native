@@ -8,10 +8,18 @@ public class CapacitorGoogleMaps: CAPPlugin, GMSMapViewDelegate, GMSPanoramaView
 
     var GOOGLE_MAPS_KEY: String = "";
     var mapViewController: GMViewController!;
-    var streetViewController: GMStreetViewController!;
+    var DEFAULT_WIDTH: Double = 500;
+    var DEFAULT_HEIGHT: Double = 500;
     var DEFAULT_ZOOM: Double = 12.0;
+    
+    var streetViewController: GMStreetViewController!;
 
     var hashMap = [Int : GMSMarker]();
+    
+    var viewWidth: Double = 0.0;
+    var viewHeight: Double = 0.0;
+    var viewX:Double = 0.0;
+    var viewY:Double = 0.0;
 
     @objc func initialize(_ call: CAPPluginCall) {
 
@@ -34,13 +42,18 @@ public class CapacitorGoogleMaps: CAPPlugin, GMSMapViewDelegate, GMSPanoramaView
             if self.mapViewController != nil {
                 self.mapViewController.view = nil
             }
+            
+            self.viewWidth = call.getDouble("width") ?? Double(self.DEFAULT_WIDTH);
+            self.viewHeight = call.getDouble("height") ?? Double(self.DEFAULT_HEIGHT);
+            self.viewX = call.getDouble("x") ?? 0;
+            self.viewY = call.getDouble("y") ?? 0;
 
             self.mapViewController = GMViewController();
             self.mapViewController.mapViewBounds = [
-                "width": call.getDouble("width") ?? 500,
-                "height": call.getDouble("height") ?? 500,
-                "x": call.getDouble("x") ?? 0,
-                "y": call.getDouble("y") ?? 0,
+                "width": self.viewWidth,
+                "height": self.viewHeight,
+                "x": self.viewX,
+                "y": self.viewY,
             ]
             self.mapViewController.cameraPosition = [
                 "latitude": call.getDouble("latitude") ?? 0.0,
@@ -50,6 +63,26 @@ public class CapacitorGoogleMaps: CAPPlugin, GMSMapViewDelegate, GMSPanoramaView
             self.bridge?.viewController?.view.addSubview(self.mapViewController.view)
             self.mapViewController.GMapView.delegate = self
             self.notifyListeners("onMapReady", data: nil)
+            
+            if(call.getBool("centerPin") ?? false){
+                let options = call.getObject("centerPinOptions");
+
+                
+                self.createFixedMarker(assetFile: (options?["assetFile"] ?? "")  as! String,
+                                       height: (options?["width"] ?? 56) as! Int,
+                                       width: (options?["height"] ?? 78) as! Int)
+            }
+        }
+        call.resolve([
+            "created": true
+        ])
+    }
+    
+    @objc func createCenterPin(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.createFixedMarker(assetFile: call.getString("assetFile") ?? "",
+                                   height: call.getInt("height") ?? 56,
+                                   width: call.getInt("width") ?? 78);
         }
         call.resolve([
             "created": true
@@ -404,6 +437,16 @@ public class CapacitorGoogleMaps: CAPPlugin, GMSMapViewDelegate, GMSPanoramaView
         }
 
     }
+    
+    @objc func getCameraPosition(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            
+            call.resolve([
+                "lat" : self.mapViewController.GMapView.camera.target.latitude,
+                "lng" : self.mapViewController.GMapView.camera.target.longitude
+            ])
+        }
+    }
 
     @objc func setMapStyle(_ call: CAPPluginCall) {
         let styleJsonString = call.getString("jsonString") ?? ""
@@ -684,6 +727,39 @@ public class CapacitorGoogleMaps: CAPPlugin, GMSMapViewDelegate, GMSPanoramaView
         call.resolve([
             "markerAdded": true
         ])
+    }
+    
+    public func createFixedMarker(assetFile: String, height: Int, width: Int) {
+        
+        let centerPin: UIImage?;
+        if( assetFile != ""){
+            let url = URL(fileURLWithPath: Bundle.main.resourcePath!+"/public/"+assetFile);
+            do {
+                let imageData = try Data.init(contentsOf: url);
+                centerPin = UIImage(data: imageData) ?? nil;
+            } catch {
+                centerPin = UIImage(named: "google_pin.png")
+            }
+        } else {
+            centerPin = UIImage(named: "google_pin.png") ?? nil;
+        }
+        
+        
+        
+        let imageView:UIImageView = UIImageView();
+        
+        // Default size is that of the default image
+        imageView.contentMode = UIView.ContentMode.scaleAspectFit
+        imageView.frame.size.width = CGFloat(width);
+        imageView.frame.size.height = CGFloat(height);
+        //imageView.center = CGPoint(x:width/2,y:height);
+        imageView.frame.origin = CGPoint(x: (Int(viewWidth)/2)-(width/2), y:(Int(viewHeight)/2)-height)
+        
+        imageView.image = centerPin;
+        
+        self.mapViewController.view.addSubview(imageView);
+        //self.bridge?.viewController?.view.addSubview(imageView);
+        
     }
 
 }
