@@ -147,7 +147,7 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
         final Integer x = viewX = call.getInt("x", 0);
         final Integer y = viewY = call.getInt("y", 0);
 
-        final Boolean centerPin = call.getBoolean("centerPin", false);
+        final Boolean centerPinVal = call.getBoolean("centerPin", false);
         final JSObject centerPinOptions = call.getObject("centerPinOptions", new JSObject());
 
         final Float zoom = call.getFloat("zoom", DEFAULT_ZOOM);
@@ -209,7 +209,11 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
 
                 ((ViewGroup) getBridge().getWebView().getParent()).addView(pin);
                 */
-                if(centerPin){
+                if (centerPin != null){
+                    ((ViewGroup) getBridge().getWebView().getParent()).removeViewInLayout(centerPin);
+                    centerPin = null;
+                }
+                if(centerPinVal){
                   createFixedMarker(
                     centerPinOptions.getString("assetFile", null),
                     centerPinOptions.getInteger("height",null),
@@ -486,6 +490,15 @@ public class CapacitorGoogleMaps extends Plugin implements OnMapReadyCallback, G
                     if (viewToRemove != null){
                         ((ViewGroup) getBridge().getWebView().getParent()).removeViewInLayout(viewToRemove);
                     }
+                }
+            }
+        });
+        getBridge().getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (centerPin != null) {
+                    ((ViewGroup) getBridge().getWebView().getParent()).removeViewInLayout(centerPin);
+                    centerPin = null;
                 }
             }
         });
